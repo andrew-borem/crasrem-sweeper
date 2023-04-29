@@ -1,8 +1,18 @@
-use eframe::egui;
-use egui::Vec2;
+use eframe::{egui, IconData};
+use egui::{Vec2, Rect, Pos2, Color32, Stroke};
+use image::ImageError;
+use image::io::Reader as ImageReader;
 
 fn main() {
-    let native_options = eframe::NativeOptions::default();
+    let mut native_options = eframe::NativeOptions::default();
+    native_options.initial_window_size = Some(Vec2{ x: 512.0, y: 512.0});
+    native_options.resizable = false;
+
+    match load_icon("src/assets/icon.png") {
+        Ok(icon) => native_options.icon_data = Some(icon),
+        Err(e) => eprintln!("Error loading icon: {:?}", e),
+    }
+
     eframe::run_native(
         "Crasrem Sweeper", 
         native_options, 
@@ -17,11 +27,6 @@ struct MyEguiApp {}
 
 impl MyEguiApp {
     fn new(cc: &eframe::CreationContext<'_>) -> Self {
-        // Customize egui here with cc.egui_ctx.set_fonts and cc.egui_ctx.set_visuals.
-        // Restore app state using cc.storage (requires the "persistence" feature).
-        // Use the cc.gl (a glow::Context) to create graphics shaders and buffers that you can use
-        // for e.g. egui::PaintCallback.
-
         Self::default()
     }
 }
@@ -44,7 +49,7 @@ impl GameBoard {
         let mut x_position: f32 = 0.0;
         let mut y_position: f32 = 0.0;
 
-        for i in 1..=area {
+        for _i in 1..=area {
             vector.push(Vec2{x: x_position, y: y_position});
 
             y_position += 1.0;
@@ -55,26 +60,47 @@ impl GameBoard {
             }
         }
 
-        println!("{:?}", vector);
-
         return vector;
     }
 }
 
 
-enum Cell {
-    Blank,
-    Mine,
-    Flag
-}
-
 impl eframe::App for MyEguiApp {
-    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
-        frame.set_window_size(Vec2{x: 512.0, y: 512.0});
 
+    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui: &mut egui::Ui| {
+            let painter = ui.painter();
+            let default_fill = Color32::from_rgb(100, 150, 200);
+            let default_stroke = Color32::from_rgb(0, 0, 0);
+
             let test: u16 = GameBoard::new();
             let test2 = GameBoard::populate_board(test);
+    
+            for vec in test2 {
+                let mut rectangle = Rect::NOTHING;
+
+                rectangle.set_top(vec[0] * 32.0);
+                rectangle.set_left(vec[1] * 32.0);
+                rectangle.set_width(32.0);
+                rectangle.set_height(32.0);
+                &painter.rect_stroke(rectangle, 0.0, Stroke{width: 1.0, color: default_stroke});
+                &painter.rect_filled(rectangle, 0.0, default_fill);
+                println!("{:?}", rectangle);
+            }
         });
     }
+}
+
+fn load_icon(path: &str) -> Result<IconData, ImageError> {
+    let image = ImageReader::open(path)?
+        .decode()?
+        .to_rgba8();
+
+    let (width, height) = image.dimensions();
+    let rgba = image.into_raw();
+    Ok(IconData {
+        rgba,
+        width: width as u32,
+        height: height as u32,
+    })
 }
